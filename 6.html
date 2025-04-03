@@ -28,26 +28,26 @@
             border: 2px solid rgba(255,255,255,0.5);
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
-            transform: scaleX(-1); /* 镜像翻转 */
+            transform: scaleX(-1); 
         }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="toggleCamera">开启环境感知</button>
-        <button id="capture">记录此刻情绪</button>
-        <div id="status">环境情绪: 等待检测...</div>
+        <button id="toggleCamera">Enable environment awareness</button>
+        <button id="capture">Record emotions in the moment</button>
+        <div id="status">Environmental emotion: waiting to be detected...</div>
     </div>
     <video id="cameraPreview" autoplay muted playsinline></video>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// 模块一：情绪共生体
+// Module 1:
 class EmoSphere {
     constructor() {
         this.initScene();
         this.initSphere();
-        this.baseHue = 0.6; // 初始色调 (红色)
+        this.baseHue = 0.6; // Initial tone (Red)
         this.currentScale = 1;
         this.animate();
     }
@@ -89,7 +89,7 @@ class EmoSphere {
     }
 }
 
-// 模块二：双向情绪镜像
+// Module 2:
 class EmotionMirror {
     constructor(emosphere) {
         this.emosphere = emosphere;
@@ -123,9 +123,9 @@ class EmotionMirror {
             this.video.srcObject = this.stream;
             await this.video.play();
             this.analyzeEnvironment();
-            document.getElementById('status').textContent = '环境情绪: 检测中...';
+            document.getElementById('status').textContent = 'Environmental emotion: Under detection...';
         } catch (error) {
-            alert('需要摄像头权限开启环境感知功能');
+            alert('The camera permission is required to enable the environment awareness function');
             this.video.style.display = 'none';
         }
     }
@@ -134,7 +134,7 @@ class EmotionMirror {
         this.stream?.getTracks().forEach(track => track.stop());
         this.stream = null;
         this.video.style.display = 'none';
-        document.getElementById('status').textContent = '环境情绪: 已关闭';
+        document.getElementById('status').textContent = 'Ambient mood: Turned off';
     }
 
     analyzeEnvironment() {
@@ -144,7 +144,7 @@ class EmotionMirror {
         const processFrame = () => {
             if (!this.stream) return;
 
-            // 绘制镜像画面
+            
             this.ctx.save();
             this.ctx.scale(-1, 1);
             this.ctx.drawImage(this.video, -this.canvas.width, 0);
@@ -158,7 +158,7 @@ class EmotionMirror {
             this.emosphere.updateColor();
 
             document.getElementById('status').textContent = 
-                `环境情绪: ${this.getMoodLabel(envHue)} (${Math.round(envHue*360)}°)`;
+                `Environmental emotion: ${this.getMoodLabel(envHue)} (${Math.round(envHue*360)}°)`;
 
             requestAnimationFrame(processFrame);
         };
@@ -197,9 +197,9 @@ class EmotionMirror {
 
     getMoodLabel(hue) {
         const moods = [
-            [0.0, '激情'], [0.1, '愤怒'], 
-            [0.3, '活力'], [0.5, '平和'],
-            [0.7, '忧郁'], [0.9, '浪漫']
+            [0.0, 'passion'], [0.1, 'anger'], 
+            [0.3, 'Invigoration'], [0.5, 'placid'],
+            [0.7, 'dejected'], [0.9, 'Romance']
         ];
         return moods.reduce((closest, current) => 
             Math.abs(current[0]-hue) < Math.abs(closest[0]-hue) ? current : closest
@@ -212,20 +212,20 @@ class EmotionMirror {
                 hue: this.emosphere.baseHue,
                 time: new Date().toLocaleTimeString()
             };
-            alert(`已记录当前情绪 (${this.lastSnapshot.time})`);
+            alert(`The current mood has been recorded (${this.lastSnapshot.time})`);
         } else {
             const diff = Math.abs(this.emosphere.baseHue - this.lastSnapshot.hue);
-            alert(`情绪变化量: ${Math.round(diff*360)}°\n上次记录: ${this.lastSnapshot.time}`);
+            alert(`Amount of emotional change: ${Math.round(diff*360)}°\nLast record: ${this.lastSnapshot.time}`);
             this.lastSnapshot = null;
         }
     }
 }
 
-// 初始化系统
+
 const emosphere = new EmoSphere();
 const mirror = new EmotionMirror(emosphere);
 
-// 窗口适应
+    
 window.addEventListener('resize', () => {
     emosphere.camera.aspect = window.innerWidth / window.innerHeight;
     emosphere.camera.updateProjectionMatrix();
