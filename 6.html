@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EmoSphere Full</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial;
+            z-index: 100;
+        }
+        button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px;
+            margin: 4px;
+            cursor: pointer;
+        }
+        #cameraPreview {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            transform: scaleX(-1); /* 镜像翻转 */
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <button id="toggleCamera">开启环境感知</button>
+        <button id="capture">记录此刻情绪</button>
+        <div id="status">环境情绪: 等待检测...</div>
+    </div>
+    <video id="cameraPreview" autoplay muted playsinline></video>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// 模块一：情绪共生体
+class EmoSphere {
+    constructor() {
+        this.initScene();
+        this.initSphere();
+        this.baseHue = 0.6; // 初始色调 (红色)
+        this.currentScale = 1;
+        this.animate();
+    }
+
+    initScene() {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setClearColor(0x222222);
+        document.body.appendChild(this.renderer.domElement);
+
+        const light = new THREE.AmbientLight(0xffffff, 0.8);
+        this.scene.add(light);
+        this.camera.position.z = 5;
+    }
+
+    initSphere() {
+        const geometry = new THREE.SphereGeometry(1, 64, 64);
+        this.material = new THREE.MeshPhongMaterial({
+            transparent: true,
+            opacity: 0.9,
+            shininess: 100
+        });
+        this.sphere = new THREE.Mesh(geometry, this.material);
+        this.scene.add(this.sphere);
+        this.updateColor();
+    }
+
+    updateColor() {
+        this.material.color.setHSL(this.baseHue, 0.8, 0.5);
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        this.sphere.rotation.x += 0.005;
+        this.sphere.rotation.y += 0.003;
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+// 模块二：双向情绪镜像
+class EmotionMirror {
+    constructor(emosphere) {
+        this.emosphere = emosphere;
+        this.video = document.getElementById('cameraPreview');
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.lastSnapshot = null;
+        this.initCameraControl();
+    }
+
+    initCameraControl() {
+        document.getElementById('toggleCamera').addEventListener('click', () => {
+            if (!this.stream) this.startCamera();
+            else this.stopCamera();
+        });
+
+        document.getElementById('capture').addEventListener('click', () => {
+            this.takeSnapshot();
+        });
+    }
+
+    async startCamera() {
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({ 
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            });
+            this.video.srcObject = this.stream;
+            await this.video.play();
+            this.analyzeEnvironment();
+            document.getElementById('status').textContent = '环境情绪: 检测中...';
+        } catch (error) {
+            alert('需要摄像头权限开启环境感知功能');
+            this.video.style.display = 'none';
+        }
+    }
+
+    stopCamera() {
+        this.stream?.getTracks().forEach(track => track.stop());
+        this.stream = null;
+        this.video.style.display = 'none';
+        document.getElementById('status').textContent = '环境情绪: 已关闭';
+    }
+
+    analyzeEnvironment() {
+        this.canvas.width = this.video.videoWidth;
+        this.canvas.height = this.video.videoHeight;
+
+        const processFrame = () => {
+            if (!this.stream) return;
+
+            // 绘制镜像画面
+            this.ctx.save();
+            this.ctx.scale(-1, 1);
+            this.ctx.drawImage(this.video, -this.canvas.width, 0);
+            this.ctx.restore();
+
+            const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+            const avgColor = this.getAverageColor(imageData.data);
+            const envHue = this.rgbToHue(avgColor.r, avgColor.g, avgColor.b);
+            
+            this.emosphere.baseHue = THREE.MathUtils.lerp(this.emosphere.baseHue, envHue, 0.1);
+            this.emosphere.updateColor();
+
+            document.getElementById('status').textContent = 
+                `环境情绪: ${this.getMoodLabel(envHue)} (${Math.round(envHue*360)}°)`;
+
+            requestAnimationFrame(processFrame);
+        };
+        processFrame();
+    }
+
+    getAverageColor(data) {
+        let r=0, g=0, b=0;
+        for (let i=0; i<data.length; i+=4) {
+            r += data[i];
+            g += data[i+1];
+            b += data[i+2];
+        }
+        const count = data.length / 4;
+        return {
+            r: r/count/255,
+            g: g/count/255,
+            b: b/count/255
+        };
+    }
+
+    rgbToHue(r, g, b) {
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0;
+        if (max !== min) {
+            const d = max - min;
+            switch(max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return h;
+    }
+
+    getMoodLabel(hue) {
+        const moods = [
+            [0.0, '激情'], [0.1, '愤怒'], 
+            [0.3, '活力'], [0.5, '平和'],
+            [0.7, '忧郁'], [0.9, '浪漫']
+        ];
+        return moods.reduce((closest, current) => 
+            Math.abs(current[0]-hue) < Math.abs(closest[0]-hue) ? current : closest
+        )[1];
+    }
+
+    takeSnapshot() {
+        if (!this.lastSnapshot) {
+            this.lastSnapshot = {
+                hue: this.emosphere.baseHue,
+                time: new Date().toLocaleTimeString()
+            };
+            alert(`已记录当前情绪 (${this.lastSnapshot.time})`);
+        } else {
+            const diff = Math.abs(this.emosphere.baseHue - this.lastSnapshot.hue);
+            alert(`情绪变化量: ${Math.round(diff*360)}°\n上次记录: ${this.lastSnapshot.time}`);
+            this.lastSnapshot = null;
+        }
+    }
+}
+
+// 初始化系统
+const emosphere = new EmoSphere();
+const mirror = new EmotionMirror(emosphere);
+
+// 窗口适应
+window.addEventListener('resize', () => {
+    emosphere.camera.aspect = window.innerWidth / window.innerHeight;
+    emosphere.camera.updateProjectionMatrix();
+    emosphere.renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
