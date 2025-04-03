@@ -28,26 +28,26 @@
             border: 2px solid rgba(255,255,255,0.5);
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
-            transform: scaleX(-1); 
+            transform: scaleX(-1); /* Mirror flip */
         }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="toggleCamera">Enable environment awareness</button>
-        <button id="capture">Record emotions in the moment</button>
-        <div id="status">Environmental emotion: waiting to be detected...</div>
+        <button id="toggleCamera">Enable Environment Sensing</button>
+        <button id="capture">Capture Current Emotion</button>
+        <div id="status">Environment Mood: Detecting...</div>
     </div>
     <video id="cameraPreview" autoplay muted playsinline></video>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// Module 1:
+// Module 1: Emotion Symbiont
 class EmoSphere {
     constructor() {
         this.initScene();
         this.initSphere();
-        this.baseHue = 0.6; // Initial tone (Red)
+        this.baseHue = 0.6; // Initial hue (red)
         this.currentScale = 1;
         this.animate();
     }
@@ -89,7 +89,7 @@ class EmoSphere {
     }
 }
 
-// Module 2:
+// Module 2: Bidirectional Emotion Mirror
 class EmotionMirror {
     constructor(emosphere) {
         this.emosphere = emosphere;
@@ -123,9 +123,9 @@ class EmotionMirror {
             this.video.srcObject = this.stream;
             await this.video.play();
             this.analyzeEnvironment();
-            document.getElementById('status').textContent = 'Environmental emotion: Under detection...';
+            document.getElementById('status').textContent = 'Environment Mood: Analyzing...';
         } catch (error) {
-            alert('The camera permission is required to enable the environment awareness function');
+            alert('Camera permission required to enable environment sensing');
             this.video.style.display = 'none';
         }
     }
@@ -134,7 +134,7 @@ class EmotionMirror {
         this.stream?.getTracks().forEach(track => track.stop());
         this.stream = null;
         this.video.style.display = 'none';
-        document.getElementById('status').textContent = 'Ambient mood: Turned off';
+        document.getElementById('status').textContent = 'Environment Mood: Offline';
     }
 
     analyzeEnvironment() {
@@ -144,7 +144,7 @@ class EmotionMirror {
         const processFrame = () => {
             if (!this.stream) return;
 
-            
+            // Draw mirrored frame
             this.ctx.save();
             this.ctx.scale(-1, 1);
             this.ctx.drawImage(this.video, -this.canvas.width, 0);
@@ -158,7 +158,7 @@ class EmotionMirror {
             this.emosphere.updateColor();
 
             document.getElementById('status').textContent = 
-                `Environmental emotion: ${this.getMoodLabel(envHue)} (${Math.round(envHue*360)}°)`;
+                `Environment Mood: ${this.getMoodLabel(envHue)} (${Math.round(envHue*360)}°)`;
 
             requestAnimationFrame(processFrame);
         };
@@ -197,9 +197,9 @@ class EmotionMirror {
 
     getMoodLabel(hue) {
         const moods = [
-            [0.0, 'passion'], [0.1, 'anger'], 
-            [0.3, 'Invigoration'], [0.5, 'placid'],
-            [0.7, 'dejected'], [0.9, 'Romance']
+            [0.0, 'Passion'], [0.1, 'Anger'], 
+            [0.3, 'Energy'], [0.5, 'Calm'],
+            [0.7, 'Melancholy'], [0.9, 'Romance']
         ];
         return moods.reduce((closest, current) => 
             Math.abs(current[0]-hue) < Math.abs(closest[0]-hue) ? current : closest
@@ -212,20 +212,20 @@ class EmotionMirror {
                 hue: this.emosphere.baseHue,
                 time: new Date().toLocaleTimeString()
             };
-            alert(`The current mood has been recorded (${this.lastSnapshot.time})`);
+            alert(`Current emotion recorded (${this.lastSnapshot.time})`);
         } else {
             const diff = Math.abs(this.emosphere.baseHue - this.lastSnapshot.hue);
-            alert(`Amount of emotional change: ${Math.round(diff*360)}°\nLast record: ${this.lastSnapshot.time}`);
+            alert(`Emotional variation: ${Math.round(diff*360)}°\nLast recorded: ${this.lastSnapshot.time}`);
             this.lastSnapshot = null;
         }
     }
 }
 
-
+// Initialize system
 const emosphere = new EmoSphere();
 const mirror = new EmotionMirror(emosphere);
 
-    
+// Window adaptation
 window.addEventListener('resize', () => {
     emosphere.camera.aspect = window.innerWidth / window.innerHeight;
     emosphere.camera.updateProjectionMatrix();
